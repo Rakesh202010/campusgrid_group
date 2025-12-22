@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Building2, Lock, Mail, LogIn, Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
@@ -165,15 +165,12 @@ const Login = () => {
                   </div>
                 </div>
 
-                {/* Remember & Forgot */}
-                <div className="flex items-center justify-between">
+                {/* Remember */}
+                <div className="flex items-center">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                     <span className="text-sm text-gray-600">Remember me</span>
                   </label>
-                  <button type="button" className="text-sm font-semibold text-blue-600 hover:text-blue-700">
-                    Forgot password?
-                  </button>
                 </div>
 
                 {/* Submit Button */}

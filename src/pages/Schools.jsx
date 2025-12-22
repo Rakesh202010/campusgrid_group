@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Building2, 
   Plus, 
@@ -13,86 +14,18 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 
 const Schools = () => {
+  const navigate = useNavigate();
   const [showAddSchool, setShowAddSchool] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  
-  const [schools, setSchools] = useState([
-    {
-      id: 1,
-      name: 'Greenwood High School',
-      location: 'New York, NY',
-      address: '123 Main Street, New York, NY 10001',
-      students: 450,
-      teachers: 35,
-      status: 'active',
-      principal: 'Dr. Sarah Johnson',
-      email: 'principal@greenwood.edu',
-      phone: '+1 (555) 123-4567',
-      established: '1995',
-      createdAt: '2025-10-15'
-    },
-    {
-      id: 2,
-      name: 'Riverside Academy',
-      location: 'Los Angeles, CA',
-      address: '456 Ocean Drive, Los Angeles, CA 90001',
-      students: 380,
-      teachers: 28,
-      status: 'active',
-      principal: 'Mr. Michael Chen',
-      email: 'principal@riverside.edu',
-      phone: '+1 (555) 234-5678',
-      established: '2001',
-      createdAt: '2025-10-10'
-    },
-    {
-      id: 3,
-      name: 'Mountain View School',
-      location: 'Denver, CO',
-      address: '789 Hill Road, Denver, CO 80201',
-      students: 520,
-      teachers: 42,
-      status: 'active',
-      principal: 'Dr. Emily Davis',
-      email: 'principal@mountainview.edu',
-      phone: '+1 (555) 345-6789',
-      established: '1988',
-      createdAt: '2025-10-05'
-    },
-    {
-      id: 4,
-      name: 'Oakwood International',
-      location: 'Chicago, IL',
-      address: '321 Park Avenue, Chicago, IL 60601',
-      students: 610,
-      teachers: 48,
-      status: 'active',
-      principal: 'Dr. Robert Wilson',
-      email: 'principal@oakwood.edu',
-      phone: '+1 (555) 456-7890',
-      established: '1992',
-      createdAt: '2025-09-28'
-    },
-    {
-      id: 5,
-      name: 'Sunset Valley Academy',
-      location: 'Phoenix, AZ',
-      address: '654 Desert Road, Phoenix, AZ 85001',
-      students: 290,
-      teachers: 22,
-      status: 'inactive',
-      principal: 'Ms. Jennifer Martinez',
-      email: 'principal@sunsetvalley.edu',
-      phone: '+1 (555) 567-8901',
-      established: '2005',
-      createdAt: '2025-09-20'
-    }
-  ]);
+  const [schools, setSchools] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -104,10 +37,56 @@ const Schools = () => {
     established: ''
   });
 
+  // Fetch schools from API
+  useEffect(() => {
+    fetchSchools();
+  }, []);
+
+  const fetchSchools = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const groupInfo = localStorage.getItem('groupAdmin_info');
+      let groupId = null;
+      
+      if (groupInfo) {
+        const parsed = JSON.parse(groupInfo);
+        groupId = parsed.groupId;
+      }
+      
+      const API_BASE_URL = 'http://localhost:4001';
+      const token = localStorage.getItem('groupAdmin_token');
+      
+      const response = await fetch(`${API_BASE_URL}/api/schools${groupId ? `?groupId=${groupId}` : ''}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setSchools(data.data || []);
+      } else {
+        setError(data.message || 'Failed to fetch schools');
+      }
+    } catch (err) {
+      console.error('Fetch schools error:', err);
+      setError('Failed to load schools. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredSchools = schools.filter(school => {
-    const matchesSearch = school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         school.location.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || school.status === filterStatus;
+    const schoolName = school.schoolName || school.name || '';
+    const location = `${school.city || ''}, ${school.state || ''}`.toLowerCase();
+    const matchesSearch = schoolName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         location.includes(searchTerm.toLowerCase());
+    const schoolStatus = (school.status || '').toLowerCase();
+    const matchesStatus = filterStatus === 'all' || schoolStatus === filterStatus.toLowerCase();
     return matchesSearch && matchesStatus;
   });
 
@@ -147,11 +126,11 @@ const Schools = () => {
             <p className="text-blue-100">Manage all schools under your group</p>
           </div>
           <button
-            onClick={() => setShowAddSchool(true)}
+            onClick={() => navigate('/schools/create')}
             className="bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
-            Add New School
+            Create New School
           </button>
         </div>
       </div>
@@ -175,7 +154,7 @@ const Schools = () => {
             <div>
               <p className="text-gray-600 text-sm font-medium mb-1">Active Schools</p>
               <p className="text-3xl font-bold text-gray-900">
-                {schools.filter(s => s.status === 'active').length}
+                {schools.filter(s => (s.status || '').toLowerCase() === 'active').length}
               </p>
             </div>
             <div className="bg-green-100 p-3 rounded-xl">
@@ -189,7 +168,7 @@ const Schools = () => {
             <div>
               <p className="text-gray-600 text-sm font-medium mb-1">Total Students</p>
               <p className="text-3xl font-bold text-gray-900">
-                {schools.reduce((sum, school) => sum + school.students, 0).toLocaleString()}
+                {schools.reduce((sum, school) => sum + (school._count?.students || 0), 0).toLocaleString()}
               </p>
             </div>
             <div className="bg-purple-100 p-3 rounded-xl">
@@ -203,7 +182,7 @@ const Schools = () => {
             <div>
               <p className="text-gray-600 text-sm font-medium mb-1">Total Teachers</p>
               <p className="text-3xl font-bold text-gray-900">
-                {schools.reduce((sum, school) => sum + school.teachers, 0)}
+                {schools.reduce((sum, school) => sum + (school._count?.teachers || 0), 0)}
               </p>
             </div>
             <div className="bg-orange-100 p-3 rounded-xl">
@@ -248,7 +227,7 @@ const Schools = () => {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              Active ({schools.filter(s => s.status === 'active').length})
+              Active ({schools.filter(s => (s.status || '').toLowerCase() === 'active').length})
             </button>
             <button
               onClick={() => setFilterStatus('inactive')}
@@ -258,69 +237,115 @@ const Schools = () => {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              Inactive ({schools.filter(s => s.status === 'inactive').length})
+              Inactive ({schools.filter(s => (s.status || '').toLowerCase() === 'inactive').length})
             </button>
           </div>
         </div>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-12">
+          <div className="flex flex-col items-center justify-center">
+            <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+            <p className="text-gray-600">Loading schools...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+          <p className="text-red-600">{error}</p>
+          <button
+            onClick={fetchSchools}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && !error && filteredSchools.length === 0 && (
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-12">
+          <div className="text-center">
+            <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Schools Found</h3>
+            <p className="text-gray-600 mb-6">
+              {searchTerm || filterStatus !== 'all' 
+                ? 'Try adjusting your search or filters' 
+                : 'Get started by onboarding your first school'}
+            </p>
+            <button
+              onClick={() => navigate('/schools/create')}
+              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-5 h-5 inline mr-2" />
+              Onboard First School
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Schools List */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-        <div className="grid grid-cols-1 gap-px bg-gray-200">
-          {filteredSchools.map((school) => (
-            <div key={school.id} className="bg-white p-6 hover:bg-gray-50 transition-colors">
-              <div className="flex items-start gap-4">
-                <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-4 rounded-2xl">
-                  <Building2 className="w-8 h-8 text-white" />
-                </div>
-
-                <div className="flex-1">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-bold text-gray-900">{school.name}</h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          school.status === 'active'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {school.status === 'active' ? (
-                            <><CheckCircle className="w-3 h-3 inline mr-1" />Active</>
-                          ) : (
-                            <><XCircle className="w-3 h-3 inline mr-1" />Inactive</>
-                          )}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-600 mb-1">
-                        <MapPin className="w-4 h-4" />
-                        <span className="text-sm">{school.address}</span>
-                      </div>
-                      <p className="text-sm text-gray-500">
-                        Principal: {school.principal} | Established: {school.established}
-                      </p>
-                    </div>
-
-                    <button className="text-gray-400 hover:text-gray-600">
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
+      {!loading && !error && filteredSchools.length > 0 && (
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="grid grid-cols-1 gap-px bg-gray-200">
+            {filteredSchools.map((school) => (
+              <div key={school.id} className="bg-white p-6 hover:bg-gray-50 transition-colors">
+                <div className="flex items-start gap-4">
+                  <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-4 rounded-2xl">
+                    <Building2 className="w-8 h-8 text-white" />
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                    <div className="bg-blue-50 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <GraduationCap className="w-4 h-4 text-blue-600" />
-                        <span className="text-xs font-semibold text-blue-600">Students</span>
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-xl font-bold text-gray-900">{school.schoolName || school.name}</h3>
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            (school.status || '').toLowerCase() === 'active'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {(school.status || '').toLowerCase() === 'active' ? (
+                              <><CheckCircle className="w-3 h-3 inline mr-1" />Active</>
+                            ) : (
+                              <><XCircle className="w-3 h-3 inline mr-1" />Inactive</>
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600 mb-1">
+                          <MapPin className="w-4 h-4" />
+                          <span className="text-sm">{school.addressLine1}, {school.city}, {school.state}</span>
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          Code: {school.schoolCode} | Type: {school.schoolType}
+                        </p>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">{school.students}</p>
+
+                      <button className="text-gray-400 hover:text-gray-600">
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
                     </div>
 
-                    <div className="bg-green-50 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Users className="w-4 h-4 text-green-600" />
-                        <span className="text-xs font-semibold text-green-600">Teachers</span>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                      <div className="bg-blue-50 rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <GraduationCap className="w-4 h-4 text-blue-600" />
+                          <span className="text-xs font-semibold text-blue-600">Students</span>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-900">{school._count?.students || 0}</p>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">{school.teachers}</p>
-                    </div>
+
+                      <div className="bg-green-50 rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Users className="w-4 h-4 text-green-600" />
+                          <span className="text-xs font-semibold text-green-600">Teachers</span>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-900">{school._count?.teachers || 0}</p>
+                      </div>
 
                     <div className="bg-purple-50 rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-1">
@@ -356,15 +381,8 @@ const Schools = () => {
             </div>
           ))}
         </div>
-
-        {filteredSchools.length === 0 && (
-          <div className="p-12 text-center">
-            <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg">No schools found</p>
-            <p className="text-gray-400 text-sm mt-1">Try adjusting your search or filters</p>
-          </div>
-        )}
       </div>
+      )}
 
       {/* Add School Modal */}
       {showAddSchool && (

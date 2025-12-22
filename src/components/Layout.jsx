@@ -11,7 +11,10 @@ import {
   X,
   ChevronDown,
   Bell,
-  Search
+  Search,
+  BookOpen,
+  BarChart3,
+  Users
 } from 'lucide-react';
 
 const Layout = () => {
@@ -30,6 +33,8 @@ const Layout = () => {
     { name: 'Schools', href: '/schools', icon: Building2 },
     { name: 'Students', href: '/students', icon: GraduationCap },
     { name: 'Teachers', href: '/teachers', icon: UserCheck },
+    { name: 'Courses', href: '/courses', icon: BookOpen },
+    { name: 'Reports', href: '/reports', icon: BarChart3 },
     { name: 'Settings', href: '/settings', icon: SettingsIcon },
   ];
 

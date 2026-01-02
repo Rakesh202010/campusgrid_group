@@ -1,293 +1,390 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Building2, 
   Users, 
   GraduationCap, 
-  UserCheck,
   TrendingUp,
   Plus,
-  Search,
-  BarChart3,
-  Calendar,
-  DollarSign,
-  Award
+  ArrowRight,
+  Loader2,
+  School,
+  BookOpen,
+  Layers,
+  Settings,
+  RefreshCw,
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  Sparkles,
+  Activity
 } from 'lucide-react';
 
+const API_URL = 'http://localhost:4001';
+
 const GroupDashboard = () => {
-  const [groupInfo] = useState(() => {
-    const stored = localStorage.getItem('groupAdmin_info');
-    return stored ? JSON.parse(stored) : { groupName: 'Your Group', name: 'Admin' };
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+  const [schools, setSchools] = useState([]);
+  const [stats, setStats] = useState({
+    totalSchools: 0,
+    totalStudents: 0,
+    totalTeachers: 0,
+    activeSchools: 0,
   });
 
-  // Mock data - will be replaced with API calls
-  const stats = [
+  const token = localStorage.getItem('groupAdmin_token');
+  
+  const [userInfo] = useState(() => {
+    const stored = localStorage.getItem('groupAdmin_info');
+    return stored ? JSON.parse(stored) : { name: 'Admin', groupName: 'Your Group', groupId: '' };
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const groupInfo = JSON.parse(localStorage.getItem('groupAdmin_info') || '{}');
+      const groupId = groupInfo.groupId;
+
+      if (!groupId) {
+        setError('Group ID not found. Please log in again.');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/api/schools?groupId=${groupId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const schoolsList = data.data || [];
+        setSchools(schoolsList);
+        
+        // Calculate stats
+        const activeSchools = schoolsList.filter(s => s.status?.toLowerCase() === 'active').length;
+        const totalStudents = schoolsList.reduce((sum, s) => sum + (s._count?.students || 0), 0);
+        const totalTeachers = schoolsList.reduce((sum, s) => sum + (s._count?.teachers || 0), 0);
+        
+        setStats({
+          totalSchools: schoolsList.length,
+          totalStudents,
+          totalTeachers,
+          activeSchools,
+        });
+      } else {
+        setError(data.message || 'Failed to fetch data');
+      }
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchData();
+  };
+
+  const quickActions = [
     {
-      title: 'Total Schools',
-      value: '24',
-      change: '+3 this month',
-      trend: 'up',
+      title: 'Onboard New School',
+      description: 'Add a new school to your group',
+      icon: Plus,
+      color: 'from-indigo-500 to-violet-500',
+      onClick: () => navigate('/schools/create'),
+    },
+    {
+      title: 'View All Schools',
+      description: 'Manage your existing schools',
       icon: Building2,
-      color: 'from-blue-500 to-blue-600',
-      bgColor: 'bg-blue-50',
-      textColor: 'text-blue-600'
+      color: 'from-emerald-500 to-teal-500',
+      onClick: () => navigate('/schools'),
     },
     {
-      title: 'Total Students',
-      value: '8,547',
-      change: '+12% from last month',
-      trend: 'up',
-      icon: GraduationCap,
-      color: 'from-green-500 to-green-600',
-      bgColor: 'bg-green-50',
-      textColor: 'text-green-600'
+      title: 'Class Templates',
+      description: 'Configure standard classes',
+      icon: Layers,
+      color: 'from-amber-500 to-orange-500',
+      onClick: () => navigate('/class-templates'),
     },
     {
-      title: 'Total Teachers',
-      value: '342',
-      change: '+8% from last month',
-      trend: 'up',
-      icon: UserCheck,
-      color: 'from-purple-500 to-purple-600',
-      bgColor: 'bg-purple-50',
-      textColor: 'text-purple-600'
+      title: 'Subject Templates',
+      description: 'Manage subject list',
+      icon: BookOpen,
+      color: 'from-rose-500 to-pink-500',
+      onClick: () => navigate('/subject-templates'),
     },
-    {
-      title: 'Active Users',
-      value: '8,889',
-      change: '+15% from last month',
-      trend: 'up',
-      icon: Users,
-      color: 'from-orange-500 to-orange-600',
-      bgColor: 'bg-orange-50',
-      textColor: 'text-orange-600'
-    }
   ];
 
-  const recentSchools = [
-    { 
-      id: 1,
-      name: 'Greenwood High School', 
-      location: 'New York, NY',
-      students: 450,
-      teachers: 35,
-      status: 'active',
-      createdAt: '2025-10-15'
-    },
-    { 
-      id: 2,
-      name: 'Riverside Academy', 
-      location: 'Los Angeles, CA',
-      students: 380,
-      teachers: 28,
-      status: 'active',
-      createdAt: '2025-10-10'
-    },
-    { 
-      id: 3,
-      name: 'Mountain View School', 
-      location: 'Denver, CO',
-      students: 520,
-      teachers: 42,
-      status: 'active',
-      createdAt: '2025-10-05'
-    },
-    { 
-      id: 4,
-      name: 'Oakwood International', 
-      location: 'Chicago, IL',
-      students: 610,
-      teachers: 48,
-      status: 'active',
-      createdAt: '2025-09-28'
-    }
-  ];
-
-  const topPerformingSchools = [
-    { name: 'Greenwood High School', score: 95, students: 450, improvement: '+5%' },
-    { name: 'Oakwood International', score: 92, students: 610, improvement: '+3%' },
-    { name: 'Riverside Academy', score: 88, students: 380, improvement: '+7%' }
-  ];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
+          <p className="text-slate-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-2xl p-8 text-white shadow-xl">
-        <div className="flex items-center justify-between flex-wrap gap-4">
+      {/* Welcome Banner */}
+      <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djZoNnYtNmgtNnptMC0xMHY2aDZ2LTZoLTZ6bTAgMTB2Nmg2di02aC02em0xMC0xMHY2aDZ2LTZoLTZ6bTAgMTB2Nmg2di02aC02em0wIDEwdjZoNnYtNmgtNnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30"></div>
+        
+        <div className="relative z-10">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-5 h-5 text-yellow-300" />
+                <span className="text-indigo-200 text-sm font-medium">Welcome back!</span>
+              </div>
+              <h1 className="text-3xl font-bold mb-2">{userInfo.name}</h1>
+              <p className="text-indigo-100 flex items-center gap-2">
+                <School className="w-4 h-4" />
+                {userInfo.groupName} • School Group Portal
+              </p>
+            </div>
+
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-white font-medium transition-all backdrop-blur-sm"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
           <div>
-            <h1 className="text-3xl font-bold mb-2">Welcome back, {groupInfo.name}! 👋</h1>
-            <p className="text-blue-100 text-lg">{groupInfo.groupName}</p>
-            <p className="text-blue-200 text-sm mt-1">Here's what's happening with your schools today</p>
-          </div>
-          <button className="bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2">
-            <Plus className="w-5 h-5" />
-            Add New School
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.title} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all border border-gray-100">
-              <div className="flex items-start justify-between mb-4">
-                <div className={`${stat.bgColor} p-3 rounded-xl`}>
-                  <Icon className={`w-6 h-6 ${stat.textColor}`} />
-                </div>
-                <div className={`px-2 py-1 rounded-lg text-xs font-semibold ${
-                  stat.trend === 'up' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-                }`}>
-                  <TrendingUp className="w-3 h-3 inline mr-1" />
-                  {stat.change.split(' ')[0]}
-                </div>
-              </div>
-              <div>
-                <p className="text-gray-600 text-sm font-medium mb-1">{stat.title}</p>
-                <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-                <p className="text-sm text-gray-500 mt-1">{stat.change}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recently Added Schools - Takes 2 columns */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg border border-gray-100">
-          <div className="p-6 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Recently Added Schools</h2>
-                <p className="text-sm text-gray-600 mt-1">Latest schools onboarded to your group</p>
-              </div>
-              <button className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-1">
-                View All
-                <TrendingUp className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-          
-          <div className="p-6">
-            <div className="space-y-4">
-              {recentSchools.map((school) => (
-                <div
-                  key={school.id}
-                  className="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 transition-all border border-gray-100 cursor-pointer group"
-                >
-                  <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-3 rounded-xl group-hover:scale-110 transition-transform">
-                    <Building2 className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-gray-900">{school.name}</h3>
-                      <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
-                        {school.status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600">{school.location}</p>
-                  </div>
-                  <div className="text-right space-y-1">
-                    <div className="flex items-center gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">Students:</span>
-                        <span className="font-semibold text-gray-900 ml-1">{school.students}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Teachers:</span>
-                        <span className="font-semibold text-gray-900 ml-1">{school.teachers}</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500">Added {new Date(school.createdAt).toLocaleDateString()}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p className="text-rose-800 font-medium">{error}</p>
+            <button
+              onClick={handleRefresh}
+              className="text-sm text-rose-600 hover:underline mt-1"
+            >
+              Try again
+            </button>
           </div>
         </div>
+      )}
 
-        {/* Top Performing Schools */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
-          <div className="p-6 border-b border-gray-100">
-            <div className="flex items-center gap-2 mb-1">
-              <Award className="w-5 h-5 text-yellow-500" />
-              <h2 className="text-xl font-bold text-gray-900">Top Performers</h2>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-indigo-100 p-3 rounded-xl">
+              <Building2 className="w-6 h-6 text-indigo-600" />
             </div>
-            <p className="text-sm text-gray-600">Highest rated schools</p>
+            <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+              {stats.activeSchools} active
+            </span>
           </div>
-          
-          <div className="p-6 space-y-4">
-            {topPerformingSchools.map((school, index) => (
-              <div key={index} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white ${
-                      index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600' :
-                      index === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-600' :
-                      'bg-gradient-to-br from-orange-400 to-orange-600'
-                    }`}>
-                      #{index + 1}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 text-sm">{school.name}</p>
-                      <p className="text-xs text-gray-500">{school.students} students</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-gray-900">{school.score}%</p>
-                    <p className="text-xs text-green-600">{school.improvement}</p>
-                  </div>
-                </div>
-                {index < topPerformingSchools.length - 1 && (
-                  <div className="h-px bg-gray-100"></div>
-                )}
-              </div>
-            ))}
+          <p className="text-3xl font-bold text-slate-800">{stats.totalSchools}</p>
+          <p className="text-sm text-slate-500 mt-1">Total Schools</p>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-violet-100 p-3 rounded-xl">
+              <GraduationCap className="w-6 h-6 text-violet-600" />
+            </div>
+            <Activity className="w-4 h-4 text-slate-300" />
           </div>
+          <p className="text-3xl font-bold text-slate-800">{stats.totalStudents.toLocaleString()}</p>
+          <p className="text-sm text-slate-500 mt-1">Total Students</p>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-emerald-100 p-3 rounded-xl">
+              <Users className="w-6 h-6 text-emerald-600" />
+            </div>
+            <Activity className="w-4 h-4 text-slate-300" />
+          </div>
+          <p className="text-3xl font-bold text-slate-800">{stats.totalTeachers}</p>
+          <p className="text-sm text-slate-500 mt-1">Total Teachers</p>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-amber-100 p-3 rounded-xl">
+              <TrendingUp className="w-6 h-6 text-amber-600" />
+            </div>
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+          </div>
+          <p className="text-3xl font-bold text-slate-800">
+            {stats.totalSchools > 0 ? Math.round((stats.activeSchools / stats.totalSchools) * 100) : 0}%
+          </p>
+          <p className="text-sm text-slate-500 mt-1">Active Rate</p>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button className="group p-6 rounded-xl border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all text-left">
-            <div className="bg-blue-100 group-hover:bg-blue-600 p-3 rounded-xl w-fit mb-3 transition-colors">
-              <Plus className="w-6 h-6 text-blue-600 group-hover:text-white transition-colors" />
-            </div>
-            <h3 className="font-semibold text-gray-900 mb-1">Add New School</h3>
-            <p className="text-sm text-gray-600">Onboard a new school to your group</p>
-          </button>
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800">Quick Actions</h2>
+            <p className="text-sm text-slate-500 mt-1">Common tasks you can perform</p>
+          </div>
+        </div>
 
-          <button className="group p-6 rounded-xl border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 transition-all text-left">
-            <div className="bg-purple-100 group-hover:bg-purple-600 p-3 rounded-xl w-fit mb-3 transition-colors">
-              <Users className="w-6 h-6 text-purple-600 group-hover:text-white transition-colors" />
-            </div>
-            <h3 className="font-semibold text-gray-900 mb-1">Manage Users</h3>
-            <p className="text-sm text-gray-600">View and manage all users</p>
-          </button>
-
-          <button className="group p-6 rounded-xl border-2 border-gray-200 hover:border-green-500 hover:bg-green-50 transition-all text-left">
-            <div className="bg-green-100 group-hover:bg-green-600 p-3 rounded-xl w-fit mb-3 transition-colors">
-              <BarChart3 className="w-6 h-6 text-green-600 group-hover:text-white transition-colors" />
-            </div>
-            <h3 className="font-semibold text-gray-900 mb-1">View Reports</h3>
-            <p className="text-sm text-gray-600">Access detailed analytics</p>
-          </button>
-
-          <button className="group p-6 rounded-xl border-2 border-gray-200 hover:border-orange-500 hover:bg-orange-50 transition-all text-left">
-            <div className="bg-orange-100 group-hover:bg-orange-600 p-3 rounded-xl w-fit mb-3 transition-colors">
-              <DollarSign className="w-6 h-6 text-orange-600 group-hover:text-white transition-colors" />
-            </div>
-            <h3 className="font-semibold text-gray-900 mb-1">Billing</h3>
-            <p className="text-sm text-gray-600">Manage subscriptions & payments</p>
-          </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {quickActions.map((action, index) => {
+            const Icon = action.icon;
+            return (
+              <button
+                key={index}
+                onClick={action.onClick}
+                className="group p-5 bg-slate-50 rounded-xl border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all text-left"
+              >
+                <div className={`w-12 h-12 bg-gradient-to-br ${action.color} rounded-xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
+                  <Icon className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-semibold text-slate-800 mb-1">{action.title}</h3>
+                <p className="text-sm text-slate-500">{action.description}</p>
+                <div className="flex items-center gap-1 mt-3 text-indigo-600 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                  Get started <ArrowRight className="w-4 h-4" />
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
+
+      {/* Schools List */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="p-6 border-b border-slate-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-800">Your Schools</h2>
+              <p className="text-sm text-slate-500 mt-1">Overview of all schools in your group</p>
+            </div>
+            <button
+              onClick={() => navigate('/schools')}
+              className="text-indigo-600 font-medium text-sm hover:underline flex items-center gap-1"
+            >
+              View all <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {schools.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Building2 className="w-8 h-8 text-slate-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">No Schools Yet</h3>
+            <p className="text-slate-500 mb-6 max-w-sm mx-auto">
+              Start by onboarding your first school to begin managing your educational group.
+            </p>
+            <button
+              onClick={() => navigate('/schools/create')}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              Onboard First School
+            </button>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {schools.slice(0, 5).map((school) => (
+              <div key={school.id} className="p-4 hover:bg-slate-50 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center text-white font-bold shadow-md">
+                    {(school.schoolName || school.name || 'S').charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-slate-800 truncate">
+                        {school.schoolName || school.name}
+                      </h4>
+                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                        school.status?.toLowerCase() === 'active'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {school.status || 'Active'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-500 truncate">
+                      {school.city}, {school.state} • {school.schoolCode}
+                    </p>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-6 text-sm">
+                    <div className="text-center">
+                      <p className="font-semibold text-slate-800">{school._count?.students || 0}</p>
+                      <p className="text-xs text-slate-400">Students</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-semibold text-slate-800">{school._count?.teachers || 0}</p>
+                      <p className="text-xs text-slate-400">Teachers</p>
+                    </div>
+                  </div>
+                  <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Getting Started Guide for new users */}
+      {schools.length === 0 && (
+        <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-200 p-6">
+          <div className="flex items-start gap-4">
+            <div className="bg-amber-100 p-3 rounded-xl">
+              <Sparkles className="w-6 h-6 text-amber-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-slate-800 mb-2">Getting Started Guide</h3>
+              <p className="text-slate-600 mb-4">
+                Welcome to CampusGrid! Here's how to set up your school group:
+              </p>
+              <ol className="space-y-3">
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 bg-amber-200 text-amber-800 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                  <span className="text-slate-600"><strong>Set up templates</strong> - Configure standard classes and subjects</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 bg-amber-200 text-amber-800 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                  <span className="text-slate-600"><strong>Onboard schools</strong> - Add your first school with admin credentials</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 bg-amber-200 text-amber-800 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                  <span className="text-slate-600"><strong>Share access</strong> - Give login details to school administrators</span>
+                </li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default GroupDashboard;
-

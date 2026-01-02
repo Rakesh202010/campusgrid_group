@@ -4,40 +4,37 @@ import {
   Building2, 
   Plus, 
   Search, 
-  Filter,
   MapPin,
   Users,
   GraduationCap,
-  MoreVertical,
   Eye,
-  Edit,
+  Edit2,
   Trash2,
   CheckCircle,
   XCircle,
-  X,
-  Loader2
+  Loader2,
+  ExternalLink,
+  MoreHorizontal,
+  RefreshCw,
+  Filter,
+  ChevronDown,
+  Mail,
+  Phone,
+  Calendar,
+  AlertCircle
 } from 'lucide-react';
 
 const Schools = () => {
   const navigate = useNavigate();
-  const [showAddSchool, setShowAddSchool] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [viewMode, setViewMode] = useState('grid'); // grid or list
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: '',
-    location: '',
-    address: '',
-    principal: '',
-    email: '',
-    phone: '',
-    established: ''
-  });
-
-  // Fetch schools from API
   useEffect(() => {
     fetchSchools();
   }, []);
@@ -80,441 +77,364 @@ const Schools = () => {
     }
   };
 
+  const handleDelete = async (schoolId) => {
+    try {
+      setDeleting(true);
+      const API_BASE_URL = 'http://localhost:4001';
+      const token = localStorage.getItem('groupAdmin_token');
+      
+      const response = await fetch(`${API_BASE_URL}/api/schools/${schoolId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setSchools(schools.filter(s => s.id !== schoolId));
+        setShowDeleteConfirm(null);
+      } else {
+        alert(data.message || 'Failed to delete school');
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert('Failed to delete school');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const filteredSchools = schools.filter(school => {
     const schoolName = school.schoolName || school.name || '';
     const location = `${school.city || ''}, ${school.state || ''}`.toLowerCase();
+    const code = school.schoolCode || '';
     const matchesSearch = schoolName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         location.includes(searchTerm.toLowerCase());
-    const schoolStatus = (school.status || '').toLowerCase();
+                         location.includes(searchTerm.toLowerCase()) ||
+                         code.toLowerCase().includes(searchTerm.toLowerCase());
+    const schoolStatus = (school.status || 'active').toLowerCase();
     const matchesStatus = filterStatus === 'all' || schoolStatus === filterStatus.toLowerCase();
     return matchesSearch && matchesStatus;
   });
 
-  const handleAddSchool = (e) => {
-    e.preventDefault();
-    const newSchool = {
-      id: schools.length + 1,
-      ...formData,
-      students: 0,
-      teachers: 0,
-      status: 'active',
-      createdAt: new Date().toISOString()
-    };
-    setSchools([newSchool, ...schools]);
-    setShowAddSchool(false);
-    setFormData({
-      name: '',
-      location: '',
-      address: '',
-      principal: '',
-      email: '',
-      phone: '',
-      established: ''
-    });
+  const statusCounts = {
+    all: schools.length,
+    active: schools.filter(s => (s.status || 'active').toLowerCase() === 'active').length,
+    inactive: schools.filter(s => (s.status || '').toLowerCase() === 'inactive').length,
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
+      <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
-              <Building2 className="w-8 h-8" />
-              Schools Management
-            </h1>
-            <p className="text-blue-100">Manage all schools under your group</p>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="bg-white/20 p-2 rounded-xl">
+                <Building2 className="w-7 h-7" />
+              </div>
+              <h1 className="text-2xl font-bold">Schools Management</h1>
+            </div>
+            <p className="text-indigo-100">
+              Manage all schools under your group • {schools.length} {schools.length === 1 ? 'school' : 'schools'}
+            </p>
           </div>
           <button
             onClick={() => navigate('/schools/create')}
-            className="bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2"
+            className="bg-white text-indigo-600 px-5 py-3 rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
-            Create New School
+            Onboard New School
           </button>
         </div>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm font-medium mb-1">Total Schools</p>
-              <p className="text-3xl font-bold text-gray-900">{schools.length}</p>
+              <p className="text-sm text-slate-500 font-medium">Total Schools</p>
+              <p className="text-2xl font-bold text-slate-800 mt-1">{schools.length}</p>
             </div>
-            <div className="bg-blue-100 p-3 rounded-xl">
-              <Building2 className="w-6 h-6 text-blue-600" />
+            <div className="bg-indigo-100 p-3 rounded-xl">
+              <Building2 className="w-6 h-6 text-indigo-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm font-medium mb-1">Active Schools</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {schools.filter(s => (s.status || '').toLowerCase() === 'active').length}
-              </p>
-            </div>
-            <div className="bg-green-100 p-3 rounded-xl">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm font-medium mb-1">Total Students</p>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-sm text-slate-500 font-medium">Total Students</p>
+              <p className="text-2xl font-bold text-slate-800 mt-1">
                 {schools.reduce((sum, school) => sum + (school._count?.students || 0), 0).toLocaleString()}
               </p>
             </div>
-            <div className="bg-purple-100 p-3 rounded-xl">
-              <GraduationCap className="w-6 h-6 text-purple-600" />
+            <div className="bg-violet-100 p-3 rounded-xl">
+              <GraduationCap className="w-6 h-6 text-violet-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm font-medium mb-1">Total Teachers</p>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-sm text-slate-500 font-medium">Total Teachers</p>
+              <p className="text-2xl font-bold text-slate-800 mt-1">
                 {schools.reduce((sum, school) => sum + (school._count?.teachers || 0), 0)}
               </p>
             </div>
-            <div className="bg-orange-100 p-3 rounded-xl">
-              <Users className="w-6 h-6 text-orange-600" />
+            <div className="bg-emerald-100 p-3 rounded-xl">
+              <Users className="w-6 h-6 text-emerald-600" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filters and Search */}
-      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <div className="flex flex-col md:flex-row gap-4">
+      {/* Search and Filters */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <div className="flex flex-col lg:flex-row gap-4">
           {/* Search */}
           <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="text"
-              placeholder="Search schools by name or location..."
+              placeholder="Search by school name, code, or location..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+              className="w-full pl-12 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
             />
           </div>
 
           {/* Status Filter */}
           <div className="flex gap-2">
-            <button
-              onClick={() => setFilterStatus('all')}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-                filterStatus === 'all'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              All ({schools.length})
-            </button>
-            <button
-              onClick={() => setFilterStatus('active')}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-                filterStatus === 'active'
-                  ? 'bg-green-600 text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              Active ({schools.filter(s => (s.status || '').toLowerCase() === 'active').length})
-            </button>
-            <button
-              onClick={() => setFilterStatus('inactive')}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-                filterStatus === 'inactive'
-                  ? 'bg-red-600 text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              Inactive ({schools.filter(s => (s.status || '').toLowerCase() === 'inactive').length})
-            </button>
+            {['all', 'active', 'inactive'].map(status => (
+              <button
+                key={status}
+                onClick={() => setFilterStatus(status)}
+                className={`px-4 py-2.5 rounded-xl font-medium transition-all capitalize ${
+                  filterStatus === status
+                    ? status === 'active' ? 'bg-emerald-600 text-white' 
+                      : status === 'inactive' ? 'bg-rose-600 text-white'
+                      : 'bg-indigo-600 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {status} ({statusCounts[status]})
+              </button>
+            ))}
           </div>
+
+          {/* Refresh */}
+          <button
+            onClick={fetchSchools}
+            disabled={loading}
+            className="p-3 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors"
+          >
+            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
       </div>
 
       {/* Loading State */}
       {loading && (
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-12">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12">
           <div className="flex flex-col items-center justify-center">
-            <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-            <p className="text-gray-600">Loading schools...</p>
+            <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
+            <p className="text-slate-600">Loading schools...</p>
           </div>
         </div>
       )}
 
       {/* Error State */}
       {error && !loading && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
-          <p className="text-red-600">{error}</p>
-          <button
-            onClick={fetchSchools}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!loading && !error && filteredSchools.length === 0 && (
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-12">
-          <div className="text-center">
-            <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Schools Found</h3>
-            <p className="text-gray-600 mb-6">
-              {searchTerm || filterStatus !== 'all' 
-                ? 'Try adjusting your search or filters' 
-                : 'Get started by onboarding your first school'}
-            </p>
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-6 flex items-start gap-4">
+          <AlertCircle className="w-6 h-6 text-rose-600 flex-shrink-0" />
+          <div>
+            <p className="text-rose-800 font-medium">{error}</p>
             <button
-              onClick={() => navigate('/schools/create')}
-              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+              onClick={fetchSchools}
+              className="mt-2 text-sm text-rose-600 hover:underline"
             >
-              <Plus className="w-5 h-5 inline mr-2" />
-              Onboard First School
+              Try again
             </button>
           </div>
         </div>
       )}
 
-      {/* Schools List */}
+      {/* Empty State */}
+      {!loading && !error && filteredSchools.length === 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12">
+          <div className="text-center">
+            <div className="w-20 h-20 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Building2 className="w-10 h-10 text-slate-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-slate-800 mb-2">
+              {searchTerm || filterStatus !== 'all' ? 'No Schools Found' : 'No Schools Yet'}
+            </h3>
+            <p className="text-slate-500 mb-6 max-w-sm mx-auto">
+              {searchTerm || filterStatus !== 'all' 
+                ? 'Try adjusting your search or filters' 
+                : 'Get started by onboarding your first school to the group'}
+            </p>
+            {!searchTerm && filterStatus === 'all' && (
+              <button
+                onClick={() => navigate('/schools/create')}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                Onboard First School
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Schools Grid */}
       {!loading && !error && filteredSchools.length > 0 && (
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-          <div className="grid grid-cols-1 gap-px bg-gray-200">
-            {filteredSchools.map((school) => (
-              <div key={school.id} className="bg-white p-6 hover:bg-gray-50 transition-colors">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {filteredSchools.map((school) => (
+            <div 
+              key={school.id} 
+              className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-200 transition-all overflow-hidden"
+            >
+              <div className="p-6">
                 <div className="flex items-start gap-4">
-                  <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-4 rounded-2xl">
-                    <Building2 className="w-8 h-8 text-white" />
+                  <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg flex-shrink-0">
+                    {(school.schoolName || school.name || 'S').charAt(0)}
                   </div>
 
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
                       <div>
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-xl font-bold text-gray-900">{school.schoolName || school.name}</h3>
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            (school.status || '').toLowerCase() === 'active'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            {(school.status || '').toLowerCase() === 'active' ? (
-                              <><CheckCircle className="w-3 h-3 inline mr-1" />Active</>
-                            ) : (
-                              <><XCircle className="w-3 h-3 inline mr-1" />Inactive</>
-                            )}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600 mb-1">
-                          <MapPin className="w-4 h-4" />
-                          <span className="text-sm">{school.addressLine1}, {school.city}, {school.state}</span>
-                        </div>
-                        <p className="text-sm text-gray-500">
-                          Code: {school.schoolCode} | Type: {school.schoolType}
+                        <h3 className="text-lg font-semibold text-slate-800 truncate">
+                          {school.schoolName || school.name}
+                        </h3>
+                        <p className="text-sm text-slate-500 flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3.5 h-3.5" />
+                          {school.city}, {school.state}
                         </p>
                       </div>
-
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <MoreVertical className="w-5 h-5" />
-                      </button>
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
+                        (school.status || 'active').toLowerCase() === 'active'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-rose-100 text-rose-700'
+                      }`}>
+                        {(school.status || 'Active')}
+                      </span>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                      <div className="bg-blue-50 rounded-lg p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <GraduationCap className="w-4 h-4 text-blue-600" />
-                          <span className="text-xs font-semibold text-blue-600">Students</span>
-                        </div>
-                        <p className="text-2xl font-bold text-gray-900">{school._count?.students || 0}</p>
-                      </div>
-
-                      <div className="bg-green-50 rounded-lg p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Users className="w-4 h-4 text-green-600" />
-                          <span className="text-xs font-semibold text-green-600">Teachers</span>
-                        </div>
-                        <p className="text-2xl font-bold text-gray-900">{school._count?.teachers || 0}</p>
-                      </div>
-
-                    <div className="bg-purple-50 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-semibold text-purple-600">Email</span>
-                      </div>
-                      <p className="text-sm font-medium text-gray-900 truncate">{school.email}</p>
+                    <div className="flex items-center gap-4 mt-3 text-sm">
+                      <span className="text-slate-500">
+                        Code: <span className="font-medium text-slate-700">{school.schoolCode}</span>
+                      </span>
+                      <span className="text-slate-400">•</span>
+                      <span className="text-slate-500">
+                        {school.schoolType}
+                      </span>
                     </div>
-
-                    <div className="bg-orange-50 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-semibold text-orange-600">Phone</span>
-                      </div>
-                      <p className="text-sm font-medium text-gray-900">{school.phone}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm font-semibold">
-                      <Eye className="w-4 h-4" />
-                      View Details
-                    </button>
-                    <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm font-semibold">
-                      <Edit className="w-4 h-4" />
-                      Edit
-                    </button>
-                    <button className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors flex items-center gap-2 text-sm font-semibold">
-                      <Trash2 className="w-4 h-4" />
-                      Delete
-                    </button>
                   </div>
                 </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-3 mt-5">
+                  <div className="bg-indigo-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-indigo-600" />
+                      <span className="text-xs font-medium text-indigo-600">Students</span>
+                    </div>
+                    <p className="text-xl font-bold text-slate-800 mt-1">{school._count?.students || 0}</p>
+                  </div>
+
+                  <div className="bg-emerald-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-emerald-600" />
+                      <span className="text-xs font-medium text-emerald-600">Teachers</span>
+                    </div>
+                    <p className="text-xl font-bold text-slate-800 mt-1">{school._count?.teachers || 0}</p>
+                  </div>
+                </div>
+
+                {/* Contact Info */}
+                {(school.primaryContactEmail || school.primaryContactPhone) && (
+                  <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap gap-4 text-sm">
+                    {school.primaryContactEmail && (
+                      <span className="flex items-center gap-1.5 text-slate-500">
+                        <Mail className="w-4 h-4" />
+                        {school.primaryContactEmail}
+                      </span>
+                    )}
+                    {school.primaryContactPhone && (
+                      <span className="flex items-center gap-1.5 text-slate-500">
+                        <Phone className="w-4 h-4" />
+                        {school.primaryContactPhone}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Actions Footer */}
+              <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+                <button 
+                  className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <Eye className="w-4 h-4" />
+                  View
+                </button>
+                <button 
+                  className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Edit
+                </button>
+                <button 
+                  onClick={() => setShowDeleteConfirm(school)}
+                  className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
               </div>
             </div>
           ))}
         </div>
-      </div>
       )}
 
-      {/* Add School Modal */}
-      {showAddSchool && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">Add New School</h2>
-              <button
-                onClick={() => setShowAddSchool(false)}
-                className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition-all"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddSchool} className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    School Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-                    placeholder="Enter school name"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Location *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-                    placeholder="City, State"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Full Address *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-                    placeholder="Complete address"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Principal Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.principal}
-                    onChange={(e) => setFormData({ ...formData, principal: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-                    placeholder="Enter principal's name"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Year Established *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.established}
-                    onChange={(e) => setFormData({ ...formData, established: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-                    placeholder="YYYY"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-                    placeholder="school@example.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Phone *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-                    placeholder="+1 (555) 123-4567"
-                  />
-                </div>
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-8 h-8 text-rose-600" />
               </div>
-
-              <div className="flex gap-4 pt-4">
+              <h3 className="text-xl font-semibold text-slate-800 mb-2">Delete School?</h3>
+              <p className="text-slate-500 mb-6">
+                Are you sure you want to delete <strong>{showDeleteConfirm.schoolName || showDeleteConfirm.name}</strong>? 
+                This action cannot be undone and will remove all associated data.
+              </p>
+              <div className="flex gap-3">
                 <button
-                  type="submit"
-                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg"
-                >
-                  Add School
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAddSchool(false)}
-                  className="px-8 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
+                  onClick={() => setShowDeleteConfirm(null)}
+                  disabled={deleting}
+                  className="flex-1 py-3 px-4 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors"
                 >
                   Cancel
                 </button>
+                <button
+                  onClick={() => handleDelete(showDeleteConfirm.id)}
+                  disabled={deleting}
+                  className="flex-1 py-3 px-4 bg-rose-600 text-white rounded-xl font-semibold hover:bg-rose-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  Delete
+                </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
@@ -523,4 +443,3 @@ const Schools = () => {
 };
 
 export default Schools;
-

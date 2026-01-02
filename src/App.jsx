@@ -6,10 +6,8 @@ import ResetPassword from './pages/ResetPassword';
 import GroupDashboard from './pages/GroupDashboard';
 import Schools from './pages/Schools';
 import CreateSchool from './pages/CreateSchool';
-import Students from './pages/Students';
-import Teachers from './pages/Teachers';
-import Courses from './pages/Courses';
-import Reports from './pages/Reports';
+import ClassTemplates from './pages/ClassTemplates';
+import SubjectTemplates from './pages/SubjectTemplates';
 import Settings from './pages/Settings';
 
 // Protected Route Component
@@ -40,10 +38,8 @@ function App() {
           <Route path="dashboard" element={<GroupDashboard />} />
           <Route path="schools" element={<Schools />} />
           <Route path="schools/create" element={<CreateSchool />} />
-          <Route path="students" element={<Students />} />
-          <Route path="teachers" element={<Teachers />} />
-          <Route path="courses" element={<Courses />} />
-          <Route path="reports" element={<Reports />} />
+          <Route path="class-templates" element={<ClassTemplates />} />
+          <Route path="subject-templates" element={<SubjectTemplates />} />
           <Route path="settings" element={<Settings />} />
         </Route>
 
